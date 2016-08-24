@@ -1,4 +1,4 @@
-Big Query Tools
+Datastore Tools
 ===================
 
 Tooling for working with Google Datastore
