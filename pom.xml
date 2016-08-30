@@ -6,7 +6,7 @@
 
     <groupId>com.paxport</groupId>
     <artifactId>storify</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <repositories>
@@ -97,5 +97,19 @@
 
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>bintray-paxportuk-maven</id>
+            <name>paxportuk-maven</name>
+            <url>https://api.bintray.com/maven/paxportuk/maven/com.paxport.storify/;publish=1</url>
+        </repository>
+    </distributionManagement>
+
+    <scm>
+        <connection>scm:git:https://github.com/paxport/storify.git</connection>
+        <developerConnection>scm:git:git@github.com:paxport/storify.git</developerConnection>
+        <url>https://github.com/paxport/storify.git</url>
+        <tag>HEAD</tag>
+    </scm>
 
 </project>
