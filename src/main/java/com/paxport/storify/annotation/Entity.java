@@ -21,4 +21,6 @@ public @interface Entity
 	 * Controls the actual kind name used in the datastore.
 	 */
 	String name() default "";
+
+	Class<?> builderClass() default NullBuilder.class;
 }

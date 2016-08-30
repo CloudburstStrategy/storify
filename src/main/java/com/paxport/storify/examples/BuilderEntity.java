@@ -10,7 +10,7 @@ import org.immutables.value.Value;
         get = {"is*", "get*"},
         depluralize = true
 )
-@Entity
+@Entity(name = "BuilderEntity", builderClass = ImmutableBuilderEntity.Builder.class)
 public abstract class BuilderEntity {
 
     @Id

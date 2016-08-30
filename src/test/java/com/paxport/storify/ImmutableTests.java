@@ -1,7 +1,9 @@
 package com.paxport.storify;
 
 import com.paxport.storify.examples.BasicEntity;
+import com.paxport.storify.examples.BuilderEntity;
 import com.paxport.storify.examples.CompositeKeyEntity;
+import com.paxport.storify.examples.ImmutableBuilderEntity;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -12,18 +14,21 @@ import org.junit.Test;
 public class ImmutableTests {
 
     @Test
-    public void testBasicPutAndThenLoad() {
+    public void testImmutablePutAndThenLoad() {
 
-
-
-        BasicEntity entity = new BasicEntity().setName("testkey").setValue("testvalue").setLongValue(123);
+        BuilderEntity entity = ImmutableBuilderEntity
+                .builder()
+                .id("testkey")
+                .value("testvalue")
+                .booleanValue(true)
+                .build();
 
         Storify.sfy().put(entity);
 
-        BasicEntity test = Storify.sfy().load(BasicEntity.class,"testkey");
-        Assert.assertEquals("testkey", test.getName());
+        BuilderEntity test = Storify.sfy().load(BuilderEntity.class,"testkey");
+        Assert.assertEquals("testkey", test.getId());
         Assert.assertEquals("testvalue", test.getValue());
-        Assert.assertEquals(123, test.getLongValue());
+        Assert.assertEquals(true, test.getBooleanValue());
 
     }
 

@@ -7,7 +7,10 @@ import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
 
+import com.paxport.storify.annotation.AnnotationUtils;
 import com.paxport.storify.mapping.EntityMapper;
+
+import java.util.Optional;
 
 public class Storify {
 
@@ -38,7 +41,14 @@ public class Storify {
     }
 
     public KeyFactory keyFactory(Class<?> type) {
-        return keyFactory.kind(type.getSimpleName());
+        Optional<com.paxport.storify.annotation.Entity> ann = AnnotationUtils.findAnnotation(type,
+                com.paxport.storify.annotation.Entity.class);
+        if ( ann.isPresent() && !ann.get().name().equals("")) {
+            return keyFactory.kind(ann.get().name());
+        }
+        else {
+            return keyFactory.kind(type.getSimpleName());
+        }
     }
 
     public Datastore datastore() {

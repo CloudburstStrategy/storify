@@ -5,7 +5,9 @@ import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 
 import com.paxport.storify.Storify;
+import com.paxport.storify.annotation.AnnotationUtils;
 import com.paxport.storify.annotation.Id;
+import com.paxport.storify.annotation.NullBuilder;
 import com.paxport.storify.annotation.UseMapper;
 import com.paxport.storify.mapping.mappers.BooleanMapper;
 import com.paxport.storify.mapping.mappers.DoubleMapper;
@@ -114,7 +116,44 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
         if ( classToObjectBuilders.containsKey(type) ) {
             return classToObjectBuilders.get(type).buildObject(type,entity,storify);
         }
+        com.paxport.storify.annotation.Entity ann = type.getAnnotation(com.paxport.storify.annotation.Entity.class);
+        if (ann != null && !ann.builderClass().equals(NullBuilder.class) ) {
+            return buildObjectWithBuilder(ann.builderClass(),type,entity);
+        }
         return buildObjectUsingIntrospection(type, entity);
+    }
+
+    private <E> E buildObjectWithBuilder(Class<?> builderClass, Class<E> type, Entity entity) {
+        try {
+            Object builder;
+            try {
+                builder = builderClass.newInstance();
+            }
+            catch (Exception e) {
+                builder = builderClass.getEnclosingClass().getMethod("builder").invoke(null);
+            }
+            for (PropertyDescriptor prop : introspectProperties(type)) {
+                String propName = prop.getName();
+                if ( entity.contains(propName) && !entity.isNull(propName)) {
+                    PropertyMapper<?> propMapper = findPropertyMapper(prop);
+                    Object value = propMapper.mapFromEntity(entity,propName,prop.getWriteMethod());
+                    Method writeMethod = builder.getClass().getMethod(propName,value.getClass());
+                    if ( value != null && writeMethod != null ) {
+                        if ( logger.isDebugEnabled() ){
+                            logger.debug("type " + type.getSimpleName() + " setting " + propName + " on builder to " + value);
+                        }
+                        writeMethod.invoke(builder,value);
+                    }
+                }
+            }
+            return (E) builderClass.getMethod("build").invoke(builder);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected <E> E buildObjectUsingIntrospection(Class<E> type, Entity entity) {
@@ -124,7 +163,6 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
                 String propName = prop.getName();
                 if ( entity.contains(propName) && !entity.isNull(propName)) {
                     PropertyMapper<?> propMapper = findPropertyMapper(prop);
-
                     Object value = propMapper.mapFromEntity(entity,propName,prop.getWriteMethod());
                     Method writeMethod = findWriteMethod(type,prop);
                     if ( value != null && writeMethod != null ) {
@@ -164,7 +202,7 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
     }
 
     protected PropertyMapper findPropertyMapper(PropertyDescriptor prop) {
-        UseMapper specificMapper = prop.getReadMethod().getAnnotation(UseMapper.class);
+        UseMapper specificMapper = AnnotationUtils.findAnnotation(prop.getReadMethod(),UseMapper.class);
         PropertyMapper propMapper;
         if ( specificMapper != null ) {
             propMapper = ensurePropertyMapper(specificMapper.value());
@@ -198,7 +236,7 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
     private Key key(Class<?> type, Object pojo, Storify storify) {
         try {
             for (PropertyDescriptor prop : introspectProperties(type)) {
-                if ( prop.getReadMethod().isAnnotationPresent(Id.class)) {
+                if (AnnotationUtils.isAnnotationPresent(prop.getReadMethod(), Id.class)) {
                     Object value = prop.getReadMethod().invoke(pojo);
                     if ( String.class.equals(prop.getPropertyType()) ) {
                         if ( value == null ) {
@@ -218,7 +256,7 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
         } catch (InvocationTargetException e) {
             throw new RuntimeException(e);
         }
-        throw new RuntimeException("Failed to find @Id on any getter method of type: " + type.getClass().getName() );
+        throw new RuntimeException("Failed to find @Id on any getter method of type: " + type.getName() );
     }
 
     protected List<PropertyDescriptor> introspectProperties(Class<?> type) {
