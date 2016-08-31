@@ -1,6 +1,5 @@
 package com.paxport.storify;
 
-import com.paxport.storify.Storify;
 import com.paxport.storify.examples.BasicEntity;
 import com.paxport.storify.examples.CompositeKeyEntity;
 
@@ -19,7 +18,7 @@ public class EntityTests {
 
         Storify.sfy().put(entity);
 
-        BasicEntity test = Storify.sfy().load(BasicEntity.class,"testkey");
+        BasicEntity test = Storify.sfy().load(BasicEntity.class,"testkey").get();
         Assert.assertEquals("testkey", test.getName());
         Assert.assertEquals("testvalue", test.getValue());
         Assert.assertEquals(123, test.getLongValue());
@@ -33,7 +32,7 @@ public class EntityTests {
 
         Storify.sfy().put(entity);
 
-        CompositeKeyEntity test = Storify.sfy().load(CompositeKeyEntity.class,"one:two");
+        CompositeKeyEntity test = Storify.sfy().load(CompositeKeyEntity.class,"one:two").get();
         Assert.assertEquals("one", test.getOne());
         Assert.assertEquals("two", test.getTwo());
         Assert.assertEquals("testvalue", test.getValue());

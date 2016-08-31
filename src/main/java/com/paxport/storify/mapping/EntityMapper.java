@@ -7,10 +7,12 @@ import com.google.cloud.datastore.Key;
 import com.paxport.storify.Storify;
 import com.paxport.storify.annotation.AnnotationUtils;
 import com.paxport.storify.annotation.Id;
+import com.paxport.storify.annotation.IgnoreLoad;
 import com.paxport.storify.annotation.NullBuilder;
 import com.paxport.storify.annotation.UseMapper;
 import com.paxport.storify.mapping.mappers.BooleanMapper;
 import com.paxport.storify.mapping.mappers.DoubleMapper;
+import com.paxport.storify.mapping.mappers.EnumMapper;
 import com.paxport.storify.mapping.mappers.FloatMapper;
 import com.paxport.storify.mapping.mappers.IntegerMapper;
 import com.paxport.storify.mapping.mappers.LongMapper;
@@ -38,6 +40,7 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
     private Map<Class<?>,PropertyMapper<?>> classToPropertyMappers = new Hashtable<>();
     private Map<Class<?>,EntityBuilder> classToEntityBuilders = new Hashtable<>();
     private Map<Class<?>,ObjectBuilder> classToObjectBuilders = new Hashtable<>();
+    private EnumMapper enumMapper = new EnumMapper();
 
     public EntityMapper(){
         registerDefaultMappers();
@@ -134,10 +137,10 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
             }
             for (PropertyDescriptor prop : introspectProperties(type)) {
                 String propName = prop.getName();
-                if ( entity.contains(propName) && !entity.isNull(propName)) {
+                if ( shouldLoadProperty(entity,prop) ) {
                     PropertyMapper<?> propMapper = findPropertyMapper(prop);
-                    Object value = propMapper.mapFromEntity(entity,propName,prop.getWriteMethod());
-                    Method writeMethod = builder.getClass().getMethod(propName,value.getClass());
+                    Method writeMethod = builder.getClass().getMethod(propName,prop.getPropertyType());
+                    Object value = propMapper.mapFromEntity(entity,propName,writeMethod);
                     if ( value != null && writeMethod != null ) {
                         if ( logger.isDebugEnabled() ){
                             logger.debug("type " + type.getSimpleName() + " setting " + propName + " on builder to " + value);
@@ -156,15 +159,43 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
         }
     }
 
+    protected boolean shouldLoadProperty (Entity entity, PropertyDescriptor prop) {
+        String propName = prop.getName();
+        if ( !entity.contains( propName) ) {
+            if(logger.isDebugEnabled()){
+                logger.debug("Not loading " + propName + " as entity does not contain it");
+            }
+            return false;
+        }
+        else if ( entity.isNull( propName ) ) {
+            if(logger.isDebugEnabled()){
+                logger.debug("Not loading " + propName + " as it is null");
+            }
+            return false;
+        }
+        else if (AnnotationUtils.isAnnotationPresent(prop.getReadMethod(),IgnoreLoad.class)) {
+            if(logger.isDebugEnabled()){
+                logger.debug("Not loading " + propName + " due to @IgnoreLoad");
+            }
+            return false;
+        }
+        else {
+            if(logger.isDebugEnabled()){
+                logger.debug("Will Load " + propName);
+            }
+            return true;
+        }
+    }
+
     protected <E> E buildObjectUsingIntrospection(Class<E> type, Entity entity) {
         try {
             E result = type.newInstance();
             for (PropertyDescriptor prop : introspectProperties(type)) {
                 String propName = prop.getName();
-                if ( entity.contains(propName) && !entity.isNull(propName)) {
+                if ( shouldLoadProperty(entity,prop) ) {
                     PropertyMapper<?> propMapper = findPropertyMapper(prop);
-                    Object value = propMapper.mapFromEntity(entity,propName,prop.getWriteMethod());
                     Method writeMethod = findWriteMethod(type,prop);
+                    Object value = propMapper.mapFromEntity(entity,propName,writeMethod);
                     if ( value != null && writeMethod != null ) {
                         if ( logger.isDebugEnabled() ){
                             logger.debug("type " + type.getSimpleName() + " setting " + propName + " on pojo to " + value);
@@ -210,6 +241,9 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
         else {
             Class<?> propertyType = prop.getPropertyType();
             propMapper = classToPropertyMappers.get(propertyType);
+            if ( propMapper == null && propertyType.isEnum() ) {
+                return enumMapper;
+            }
             if ( propMapper == null ) {
                 throw new RuntimeException("Failed to find property mapper for " + prop.getName() + " of type: " + propertyType.getName());
             }
