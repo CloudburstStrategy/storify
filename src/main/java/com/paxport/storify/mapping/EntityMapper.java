@@ -277,11 +277,11 @@ public class EntityMapper implements EntityBuilder, ObjectBuilder {
                             throw new RuntimeException("String key should be set on pojo as @Id property " + prop.getName() + " but is not");
                         }
                         else{
-                            return storify.keyFactory(type).newKey((String)value);
+                            return storify.newKey(type,(String)value);
                         }
                     }
                     else{
-                        return storify.keyFactory(type).newKey((Long)value);
+                        return storify.newKey(type,(Long)value);
                     }
                 }
             }

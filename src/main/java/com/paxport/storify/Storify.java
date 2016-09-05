@@ -1,17 +1,17 @@
 package com.paxport.storify;
 
 
-import com.google.cloud.datastore.Datastore;
-import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import com.google.cloud.datastore.KeyFactory;
 
 import com.paxport.storify.annotation.AnnotationUtils;
 import com.paxport.storify.annotation.Cache;
+import com.paxport.storify.api.DatastoreAPI;
+import com.paxport.storify.api.RESTDatastoreAPI;
 import com.paxport.storify.cache.EntityCache;
 import com.paxport.storify.cache.SimpleCache;
 import com.paxport.storify.cache.SimpleMemcache;
+import com.paxport.storify.cache.TimeoutCacheEntry;
 import com.paxport.storify.mapping.EntityMapper;
 
 import org.slf4j.Logger;
@@ -27,23 +27,20 @@ public class Storify {
 
     private static Storify STORIFY;
 
-    private Datastore datastore;
-
-    private KeyFactory keyFactory;
+    private DatastoreAPI datastore;
 
     private EntityMapper mapper;
 
     private EntityCache entityCache;
 
-    public Storify(Datastore datastore, EntityMapper entityMapper, SimpleCache cache){
+    public Storify(DatastoreAPI datastore, EntityMapper entityMapper, SimpleCache cache){
         this.datastore = datastore;
-        this.keyFactory = datastore.newKeyFactory();
         this.mapper = entityMapper;
         this.entityCache = new EntityCache(cache);
     }
 
     public Storify(){
-        this(DatastoreOptions.defaultInstance().service(),new EntityMapper(), new SimpleMemcache());
+        this(new RESTDatastoreAPI(),new EntityMapper(), new SimpleMemcache());
     }
 
     public static Storify sfy() {
@@ -54,25 +51,50 @@ public class Storify {
         return STORIFY;
     }
 
-    public KeyFactory keyFactory(Class<?> type) {
-        Optional<com.paxport.storify.annotation.Entity> ann = AnnotationUtils.findAnnotation(type,
-                com.paxport.storify.annotation.Entity.class);
-        if ( ann.isPresent() && !ann.get().name().equals("")) {
-            return keyFactory.kind(ann.get().name());
-        }
-        else {
-            return keyFactory.kind(type.getSimpleName());
-        }
+    public Key newKey(Class<?> type, String name) {
+        return datastore.newKey(kind(type),name);
     }
 
-    public Datastore datastore() {
-        return this.datastore;
+    public Key newKey(Class<?> type, Long id) {
+        return datastore.newKey(kind(type),id);
+    }
+
+    /**
+     * What kind in datastore is this type?
+     *
+     * Will look for kind() in @Entity or use simple type name
+     *
+     * @param type
+     * @return
+     */
+    public String kind(Class<?> type) {
+        Optional<com.paxport.storify.annotation.Entity> ann = AnnotationUtils.findAnnotation(type,
+                com.paxport.storify.annotation.Entity.class);
+        String kind = type.getSimpleName();
+        if ( ann.isPresent() && !ann.get().kind().equals("")) {
+            kind = ann.get().kind();
+        }
+        return kind;
     }
 
     public <E> Optional<E> load(Class<E> type, String key){
-        Key k = keyFactory(type).newKey(key);
-        Optional<Entity> cachedEntity = checkCacheIfAppropriate(type,k);
-        Entity entity = cachedEntity.orElse(datastore.get(k));
+        Key k = newKey(type,key);
+        Entity entity = null;
+        if ( cacheStaleMillis(type).isPresent() ) {
+            Optional<TimeoutCacheEntry<Entity>> cached = entityCache.getEntry(k.toUrlSafe());
+            if ( cached.isPresent() ) {
+                entity = cached.get().getValue();
+                if ( entity == null ) {
+                    // we know there is no result in datastore
+                    return Optional.empty();
+                }
+            }
+        }
+        if ( entity == null ) {
+            // no cached results so go to the datastore
+            entity = datastore.get(k);
+            cacheEntityIfAppropriate(type,k,entity);
+        }
         if ( entity == null ) {
             if ( logger.isDebugEnabled() ){
                 logger.debug("no entity found for key: " + k);
@@ -82,26 +104,28 @@ public class Storify {
         return Optional.of(mapper.buildObject(type,entity,this));
     }
 
-    protected <E> Optional<Entity> checkCacheIfAppropriate(Class<E> type, Key key) {
-        Optional<Cache> annotation = AnnotationUtils.findAnnotation(type,Cache.class);
-        if ( annotation.isPresent() ) {
-            Cache cacheConfig = annotation.get();
-            Optional<Entity> result = entityCache.get(key.toUrlSafe());
-            if ( logger.isDebugEnabled() ) {
-                if ( result.isPresent() ) {
-                    logger.debug("Entity cache hit for type: " + type.getName() );
-                }
-                else {
-                    logger.debug("Entity cache miss for type: " + type.getName() );
-                }
-            }
-            return result;
+    private Optional<Long> cacheStaleMillis(Class<?> type) {
+        Optional<Cache> cacheInfo = AnnotationUtils.findAnnotation(type,Cache.class);
+        if ( cacheInfo.isPresent() ) {
+            Cache cacheConfig = cacheInfo.get();
+            int expirationSecs = cacheConfig.expirationSeconds();
+            long staleMillis = expirationSecs==0?ONE_WEEK_MILLIS:expirationSecs*1000;
+            return Optional.of(staleMillis);
         }
         else {
             return Optional.empty();
         }
     }
 
+    protected Optional<Entity> checkCacheIfAppropriate(Class<?> type, Key key) {
+        if ( cacheStaleMillis(type).isPresent() ) {
+            Optional<Entity> result = entityCache.get(key.toUrlSafe());
+            return result;
+        }
+        else {
+            return Optional.empty();
+        }
+    }
 
     public Entity put(Object pojo) {
         Entity entity = mapper.buildEntity(pojo.getClass(),pojo,this);
@@ -110,19 +134,16 @@ public class Storify {
             logger.debug("entity put successful " + entity);
         }
 
-        cacheEntityIfAppropriate(pojo, entity);
+        cacheEntityIfAppropriate(pojo.getClass(), entity.key(), entity);
 
         return entity;
     }
 
-    protected void cacheEntityIfAppropriate(Object pojo, Entity entity) {
-        Optional<Cache> annotation = AnnotationUtils.findAnnotation(pojo.getClass(),Cache.class);
-        if ( annotation.isPresent() ) {
-            Cache cacheConfig = annotation.get();
-            int expirationSecs = cacheConfig.expirationSeconds();
-            long staleMillis = expirationSecs==0?ONE_WEEK_MILLIS:expirationSecs*1000;
-            String cacheKey = entity.key().toUrlSafe();
-            entityCache.put(cacheKey,entity,staleMillis);
+    protected void cacheEntityIfAppropriate(Class<?> type, Key key, Entity entity) {
+        Optional<Long> staleMillis = cacheStaleMillis(type);
+        if ( staleMillis.isPresent() ) {
+            String cacheKey = key.toUrlSafe();
+            entityCache.put(cacheKey,entity,staleMillis.get());
             if ( logger.isDebugEnabled() ) {
                 logger.debug("put entity with key " + cacheKey + " into entity cache with staleMillis = " + staleMillis);
             }
