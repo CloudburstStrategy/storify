@@ -6,11 +6,19 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 
 
-public abstract class TimeoutCache<K,V> {
+public abstract class TimeoutCache<V> {
 
     private final static Logger logger = LoggerFactory.getLogger(TimeoutCache.class);
 
     private SimpleCache cache;
+
+    protected TimeoutCache() {
+        this(new SimpleMemcache());
+    }
+
+    protected TimeoutCache(SimpleCache delegate) {
+        cache = delegate;
+    }
 
     protected String tag() {
         return getClass().getName();
@@ -24,7 +32,17 @@ public abstract class TimeoutCache<K,V> {
         }
     }
 
-    public Optional<TimeoutCacheEntry<V>> getIfNotStale(String key) {
+    public Optional<V> get(String key) {
+        Optional<TimeoutCacheEntry<V>> entry = getEntry(key);
+        if ( entry.isPresent() ) {
+            return Optional.ofNullable(entry.get().getValue());
+        }
+        else {
+            return Optional.empty();
+        }
+    }
+
+    public Optional<TimeoutCacheEntry<V>> getEntry(String key) {
         Optional<TimeoutCacheEntry> entry = cache.get(key);
         if ( entry.isPresent() ) {
             if ( entry.get().isStale() ) {
