@@ -28,7 +28,7 @@ public abstract class TimeoutCache<V> {
         TimeoutCacheEntry<V> entry = new TimeoutCacheEntry(value,staleMillis);
         cache.put(key,entry);
         if(logger.isInfoEnabled()) {
-            logger.info("NEW CACHE ENTRY FOR " + tag());
+            logger.info("NEW CACHE ENTRY FOR " + tag() + " key: " + key);
         }
     }
 
@@ -47,20 +47,20 @@ public abstract class TimeoutCache<V> {
         if ( entry.isPresent() ) {
             if ( entry.get().isStale() ) {
                 if(logger.isInfoEnabled()) {
-                    logger.info("CACHE STALE FOR " + tag() + " cachedAt: " + entry.get().getCachedAt() );
+                    logger.info("CACHE STALE FOR " + tag() + " cachedAt: " + entry.get().getCachedAt() + " key: " + key);
                 }
                 cache.remove(key);
             }
             else {
                 if(logger.isInfoEnabled()) {
-                    logger.info("CACHE HIT FOR " + tag() + " cachedAt: " + entry.get().getCachedAt() );
+                    logger.info("CACHE HIT FOR " + tag() + " cachedAt: " + entry.get().getCachedAt() + " key: " + key );
                 }
                 return Optional.ofNullable(entry.get());
             }
         }
         else {
             if(logger.isInfoEnabled()) {
-                logger.info("CACHE MISS FOR " + tag() );
+                logger.info("CACHE MISS FOR " + tag()  + " key: " + key);
             }
         }
         return Optional.empty();
