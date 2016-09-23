@@ -32,4 +32,9 @@ public class MockDatastoreAPI implements DatastoreAPI {
     public Entity get(Key key) {
         return map.get(key);
     }
+
+    @Override
+    public void delete(Key key) {
+        map.remove(key);
+    }
 }

@@ -12,7 +12,7 @@ import org.junit.Test;
 public class EntityTests {
 
     @Test
-    public void testBasicPutAndThenLoad() {
+    public void testBasicPutAndThenLoadThenDelete() {
 
         BasicEntity entity = new BasicEntity().setName("testkey").setValue("testvalue").setLongValue(123);
 
@@ -22,6 +22,8 @@ public class EntityTests {
         Assert.assertEquals("testkey", test.getName());
         Assert.assertEquals("testvalue", test.getValue());
         Assert.assertEquals(123, test.getLongValue());
+
+        Storify.sfy().delete(BasicEntity.class,"testkey");
 
     }
 
@@ -36,6 +38,8 @@ public class EntityTests {
         Assert.assertEquals("one", test.getOne());
         Assert.assertEquals("two", test.getTwo());
         Assert.assertEquals("testvalue", test.getValue());
+
+        Storify.sfy().delete(CompositeKeyEntity.class,"one:two");
 
     }
 }

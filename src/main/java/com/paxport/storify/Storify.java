@@ -149,4 +149,9 @@ public class Storify {
             }
         }
     }
+
+    public void delete(Class<?> type, String key) {
+        Key k = newKey(type,key);
+        datastore.delete(k);
+    }
 }

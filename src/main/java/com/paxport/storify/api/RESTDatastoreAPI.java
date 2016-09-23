@@ -36,4 +36,9 @@ public class RESTDatastoreAPI implements DatastoreAPI {
     public Entity get(Key key) {
         return datastore.get(key);
     }
+
+    @Override
+    public void delete(Key key) {
+        datastore.delete(key);
+    }
 }

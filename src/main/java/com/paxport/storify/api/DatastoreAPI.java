@@ -18,4 +18,6 @@ public interface DatastoreAPI {
 
     Entity get(Key key);
 
+    void delete(Key key);
+
 }
