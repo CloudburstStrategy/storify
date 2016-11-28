@@ -1,5 +1,7 @@
 Storify
-===================
+=======
+
+[![Build Status](https://travis-ci.org/paxport/storify.svg?branch=master)](https://travis-ci.org/paxport/storify)
 
 POJO Mapping for Google Datastore
 
