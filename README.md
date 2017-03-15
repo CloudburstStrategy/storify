@@ -1,7 +1,7 @@
 Storify
 =======
 
-[![Build Status](https://travis-ci.org/paxport/storify.svg?branch=master)](https://travis-ci.org/paxport/storify)
+[![Build Status](https://travis-ci.org/CloudburstStrategy/storify.svg?branch=master)](https://travis-ci.org/CloudburstStrategy/storify)
 
 POJO Mapping for Google Datastore
 

@@ -2,10 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.paxport</groupId>
+    <groupId>com.cloudburst</groupId>
     <artifactId>storify</artifactId>
     <version>0.1.2-SNAPSHOT</version>
     <packaging>jar</packaging>
+
+    <properties>
+        <immutables.version>2.4.4</immutables.version>
+    </properties>
 
     <repositories>
         <repository>
@@ -17,9 +21,9 @@
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
-            <id>paxport-maven</id>
-            <name>paxport-maven</name>
-            <url>http://paxportuk.bintray.com/maven</url>
+            <id>bintray-cloudburst-maven</id>
+            <name>bintray</name>
+            <url>http://dl.bintray.com/cloudburst/maven</url>
         </repository>
     </repositories>
 
@@ -95,14 +99,14 @@
         <dependency>
             <groupId>org.immutables</groupId>
             <artifactId>value</artifactId>
-            <version>2.2</version>
+            <version>${immutables.version}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.immutables</groupId>
             <artifactId>serial</artifactId>
-            <version>2.2</version>
+            <version>${immutables.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -110,16 +114,16 @@
 
     <distributionManagement>
         <repository>
-            <id>bintray-paxportuk-maven</id>
-            <name>paxportuk-maven</name>
-            <url>https://api.bintray.com/maven/paxportuk/maven/com.paxport.storify/;publish=1</url>
+            <id>bintray-cloudburst-maven</id>
+            <name>bintray</name>
+            <url>https://api.bintray.com/maven/cloudburst/maven/com.cloudburst.storify/;publish=1</url>
         </repository>
     </distributionManagement>
 
     <scm>
-        <connection>scm:git:https://github.com/paxport/storify.git</connection>
-        <developerConnection>scm:git:git@github.com:paxport/storify.git</developerConnection>
-        <url>https://github.com/paxport/storify.git</url>
+        <connection>scm:git:https://github.com/CloudburstStrategy/storify.git</connection>
+        <developerConnection>scm:git:git@github.com:CloudburstStrategy/storify.git</developerConnection>
+        <url>https://github.com/CloudburstStrategy/storify.git</url>
         <tag>HEAD</tag>
     </scm>
 
